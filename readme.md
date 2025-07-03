@@ -1,6 +1,6 @@
 # 🔬 Mini CERN - AI-Driven Physics Research System
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/mini-cern)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/abdulrahimiqbal/mini-cern)
 
 A comprehensive AI-driven physics research system inspired by CERN, featuring autonomous research agents, real-time monitoring, and advanced workflow management.
 
@@ -34,7 +34,7 @@ Visit the live dashboard: [https://mini-cern.vercel.app](https://mini-cern.verce
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/mini-cern.git
+   git clone https://github.com/abdulrahimiqbal/mini-cern.git
    cd mini-cern
    ```
 

@@ -9,9 +9,20 @@
   "functions": {
     "api/health.js": {
       "runtime": "nodejs18.x"
+    },
+    "api/dashboard.js": {
+      "runtime": "nodejs18.x"
     }
   },
   "rewrites": [
+    {
+      "source": "/api/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/api/dashboard/overview",
+      "destination": "/api/dashboard"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"

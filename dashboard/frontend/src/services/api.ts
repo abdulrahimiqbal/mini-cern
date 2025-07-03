@@ -1,7 +1,10 @@
 import axios from 'axios'
 import type { SystemOverview, TestResult, WorkflowStatus, ApiResponse } from '../types'
 
-const API_BASE = 'http://localhost:8000'
+// Use production API if in production, otherwise localhost
+const API_BASE = process.env.NODE_ENV === 'production' 
+  ? '' // Use relative URLs in production (same domain)
+  : 'http://localhost:8000'
 
 const api = axios.create({
   baseURL: API_BASE,
