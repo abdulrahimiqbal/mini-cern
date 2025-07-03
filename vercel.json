@@ -4,6 +4,30 @@
   "installCommand": "cd dashboard/frontend && npm install",
   "rewrites": [
     {
+      "source": "/api/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/api/dashboard/overview",
+      "destination": "/api/dashboard"
+    },
+    {
+      "source": "/api/dashboard/agents",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/api/dashboard/safety",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/api/dashboard/testing/run-suite",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/api/dashboard/workflows",
+      "destination": "/api/health"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

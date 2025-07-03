@@ -16,9 +16,11 @@ const Monitoring: React.FC = () => {
   const [agentStatus, setAgentStatus] = useState<any>(null)
   const [safetyStatus, setSafetyStatus] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const loadMonitoringData = async () => {
     try {
+      setLoading(true)
       const [overviewData, agentsData, safetyData] = await Promise.all([
         apiService.getSystemOverview(),
         apiService.getAgents(),
@@ -28,7 +30,9 @@ const Monitoring: React.FC = () => {
       setOverview(overviewData)
       setAgentStatus(agentsData)
       setSafetyStatus(safetyData)
+      setError(null)
     } catch (error) {
+      setError('Failed to load monitoring data')
       console.error('Failed to load monitoring data:', error)
     } finally {
       setLoading(false)
@@ -66,7 +70,28 @@ const Monitoring: React.FC = () => {
     }
   }
 
-  if (loading) {
+  const loadSystemData = async () => {
+    try {
+      setLoading(true)
+      const data = await apiService.getSystemOverview()
+      setOverview(data)
+      setError(null)
+    } catch (err) {
+      setError('Failed to load monitoring data')
+      console.error('Error loading monitoring data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadSystemData()
+    const interval = setInterval(loadSystemData, 5000) // Update every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
+  if (loading && !overview) {
     return (
       <Box textAlign="center" py={10}>
         <Spinner size="xl" color="blue.500" />
@@ -74,6 +99,36 @@ const Monitoring: React.FC = () => {
       </Box>
     )
   }
+
+  if (error) {
+    return (
+      <Box bg="red.50" border="1px" borderColor="red.200" borderRadius="md" p={4}>
+        <Text color="red.800" fontWeight="bold">Error!</Text>
+        <Text color="red.600">{error}</Text>
+      </Box>
+    )
+  }
+
+  if (!overview) {
+    return (
+      <Box bg="yellow.50" border="1px" borderColor="yellow.200" borderRadius="md" p={4}>
+        <Text color="yellow.800" fontWeight="bold">No Data</Text>
+        <Text color="yellow.600">Unable to load monitoring data</Text>
+      </Box>
+    )
+  }
+
+  // Defensive programming: ensure metrics exist
+  const metrics = overview.metrics || {
+    cpu_percent: 0,
+    memory_percent: 0,
+    disk_percent: 0,
+    active_agents: 0,
+    response_time_ms: 0
+  }
+
+  // Defensive programming: ensure components exist
+  const components = overview.components || []
 
   return (
     <Box>
@@ -91,30 +146,30 @@ const Monitoring: React.FC = () => {
           <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={4}>
             <Box textAlign="center" p={4} bg="gray.50" borderRadius="md">
               <Text fontSize="xs" color="gray.500" mb={1}>CPU USAGE</Text>
-              <Text fontSize="2xl" fontWeight="bold" color={overview.metrics.cpu_percent > 80 ? 'red.500' : 'green.500'}>
-                {overview.metrics.cpu_percent.toFixed(1)}%
+              <Text fontSize="2xl" fontWeight="bold" color={metrics.cpu_percent > 80 ? 'red.500' : 'green.500'}>
+                {metrics.cpu_percent.toFixed(1)}%
               </Text>
               <Box mt={2} bg="gray.200" borderRadius="md" h={1}>
                 <Box 
-                  bg={overview.metrics.cpu_percent > 80 ? 'red.500' : 'green.500'}
+                  bg={metrics.cpu_percent > 80 ? 'red.500' : 'green.500'}
                   h="100%" 
                   borderRadius="md"
-                  width={`${overview.metrics.cpu_percent}%`}
+                  width={`${metrics.cpu_percent}%`}
                 />
               </Box>
             </Box>
 
             <Box textAlign="center" p={4} bg="gray.50" borderRadius="md">
               <Text fontSize="xs" color="gray.500" mb={1}>MEMORY USAGE</Text>
-              <Text fontSize="2xl" fontWeight="bold" color={overview.metrics.memory_percent > 90 ? 'red.500' : 'blue.500'}>
-                {overview.metrics.memory_percent.toFixed(1)}%
+              <Text fontSize="2xl" fontWeight="bold" color={metrics.memory_percent > 90 ? 'red.500' : 'blue.500'}>
+                {metrics.memory_percent.toFixed(1)}%
               </Text>
               <Box mt={2} bg="gray.200" borderRadius="md" h={1}>
                 <Box 
-                  bg={overview.metrics.memory_percent > 90 ? 'red.500' : 'blue.500'}
+                  bg={metrics.memory_percent > 90 ? 'red.500' : 'blue.500'}
                   h="100%" 
                   borderRadius="md"
-                  width={`${overview.metrics.memory_percent}%`}
+                  width={`${metrics.memory_percent}%`}
                 />
               </Box>
             </Box>
@@ -122,17 +177,17 @@ const Monitoring: React.FC = () => {
             <Box textAlign="center" p={4} bg="gray.50" borderRadius="md">
               <Text fontSize="xs" color="gray.500" mb={1}>RESPONSE TIME</Text>
               <Text fontSize="2xl" fontWeight="bold" color="purple.500">
-                {overview.metrics.response_time_ms}ms
+                {metrics.response_time_ms}ms
               </Text>
               <Text fontSize="xs" color="gray.500" mt={1}>
-                {overview.metrics.response_time_ms < 100 ? 'Excellent' : 'Good'}
+                {metrics.response_time_ms < 100 ? 'Excellent' : 'Good'}
               </Text>
             </Box>
 
             <Box textAlign="center" p={4} bg="gray.50" borderRadius="md">
               <Text fontSize="xs" color="gray.500" mb={1}>ACTIVE AGENTS</Text>
               <Text fontSize="2xl" fontWeight="bold" color="green.500">
-                {overview.metrics.active_agents}
+                {metrics.active_agents}
               </Text>
               <Text fontSize="xs" color="gray.500" mt={1}>
                 All operational
@@ -147,7 +202,7 @@ const Monitoring: React.FC = () => {
         <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200" mb={6}>
           <Heading size="md" mb={4}>Component Health Status</Heading>
           <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4}>
-            {overview.components.map((component: ComponentStatus) => (
+            {components.map((component: ComponentStatus) => (
               <Box
                 key={component.name}
                 p={4}
