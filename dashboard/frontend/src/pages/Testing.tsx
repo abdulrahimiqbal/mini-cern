@@ -5,8 +5,6 @@ import {
   Text,
   Button,
   Badge,
-  Spinner,
-  Textarea,
 } from '@chakra-ui/react'
 import apiService from '../services/api'
 import websocketService from '../services/websocket'
@@ -122,7 +120,7 @@ const Testing: React.FC = () => {
                      <Button
              colorScheme="blue"
              onClick={runTestSuite}
-             loading={isRunning}
+             isLoading={isRunning}
              disabled={isRunning}
            >
             Run E2E Test Suite

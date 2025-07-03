@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { SystemOverview, TestResult, WorkflowStatus, ApiResponse } from '../types'
+import type { SystemOverview, WorkflowStatus, ApiResponse } from '../types'
 
 // Use production API if in production, otherwise localhost
 const API_BASE = process.env.NODE_ENV === 'production' 
