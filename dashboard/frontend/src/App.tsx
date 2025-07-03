@@ -1,13 +1,13 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { Box, Text } from '@chakra-ui/react'
+import { Box, Text, Spinner } from '@chakra-ui/react'
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
+  { children: React.ReactNode; fallback?: string },
   { hasError: boolean; error?: Error }
 > {
-  constructor(props: { children: React.ReactNode }) {
+  constructor(props: { children: React.ReactNode; fallback?: string }) {
     super(props)
     this.state = { hasError: false }
   }
@@ -17,14 +17,16 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('App Error Boundary:', error, errorInfo)
+    console.error('Error Boundary:', error, errorInfo)
   }
 
   render() {
     if (this.state.hasError) {
       return (
         <Box p={8} bg="red.50" border="1px" borderColor="red.200" borderRadius="md">
-          <h1 style={{ color: 'red', marginBottom: '16px' }}>Something went wrong</h1>
+          <h1 style={{ color: 'red', marginBottom: '16px' }}>
+            {this.props.fallback || 'Something went wrong'}
+          </h1>
           <details style={{ color: 'red' }}>
             <summary>Error Details</summary>
             <pre>{this.state.error?.stack}</pre>
@@ -37,21 +39,36 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// Simple test components
-const Dashboard = () => (
-  <Box p={8}>
-    <Text fontSize="2xl" fontWeight="bold" color="blue.600">
-      Dashboard Working!
-    </Text>
-    <Text>Mini CERN Science Research Institute</Text>
-  </Box>
-)
+// Lazy load components with error boundaries
+const LazyDashboard = React.lazy(() => import('./pages/Dashboard').catch(err => {
+  console.error('Failed to load Dashboard:', err)
+  return { default: () => <Text color="red.500">Failed to load Dashboard</Text> }
+}))
 
-const Testing = () => (
-  <Box p={8}>
-    <Text fontSize="2xl" fontWeight="bold" color="green.600">
-      Testing Page Working!
-    </Text>
+const LazyTesting = React.lazy(() => import('./pages/Testing').catch(err => {
+  console.error('Failed to load Testing:', err)
+  return { default: () => <Text color="red.500">Failed to load Testing</Text> }
+}))
+
+const LazyWorkflows = React.lazy(() => import('./pages/Workflows').catch(err => {
+  console.error('Failed to load Workflows:', err)
+  return { default: () => <Text color="red.500">Failed to load Workflows</Text> }
+}))
+
+const LazyMonitoring = React.lazy(() => import('./pages/Monitoring').catch(err => {
+  console.error('Failed to load Monitoring:', err)
+  return { default: () => <Text color="red.500">Failed to load Monitoring</Text> }
+}))
+
+const LazyLayout = React.lazy(() => import('./components/Layout').catch(err => {
+  console.error('Failed to load Layout:', err)
+  return { default: ({ children }: { children: React.ReactNode }) => <Box>{children}</Box> }
+}))
+
+// Loading component
+const LoadingSpinner = () => (
+  <Box display="flex" justifyContent="center" alignItems="center" height="200px">
+    <Spinner size="xl" color="blue.500" />
   </Box>
 )
 
@@ -59,15 +76,44 @@ function App() {
   console.log('App component rendering')
   
   return (
-    <ErrorBoundary>
+    <ErrorBoundary fallback="App crashed">
       <Box minHeight="100vh" bg="gray.50">
-        <Box p={4} bg="blue.600" color="white">
-          <Text fontSize="xl" fontWeight="bold">Mini CERN Dashboard</Text>
-        </Box>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/testing" element={<Testing />} />
-        </Routes>
+        <Suspense fallback={<LoadingSpinner />}>
+          <ErrorBoundary fallback="Layout failed to load">
+            <LazyLayout>
+              <Routes>
+                <Route path="/" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ErrorBoundary fallback="Dashboard failed to load">
+                      <LazyDashboard />
+                    </ErrorBoundary>
+                  </Suspense>
+                } />
+                <Route path="/testing" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ErrorBoundary fallback="Testing failed to load">
+                      <LazyTesting />
+                    </ErrorBoundary>
+                  </Suspense>
+                } />
+                <Route path="/workflows" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ErrorBoundary fallback="Workflows failed to load">
+                      <LazyWorkflows />
+                    </ErrorBoundary>
+                  </Suspense>
+                } />
+                <Route path="/monitoring" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ErrorBoundary fallback="Monitoring failed to load">
+                      <LazyMonitoring />
+                    </ErrorBoundary>
+                  </Suspense>
+                } />
+              </Routes>
+            </LazyLayout>
+          </ErrorBoundary>
+        </Suspense>
       </Box>
     </ErrorBoundary>
   )
