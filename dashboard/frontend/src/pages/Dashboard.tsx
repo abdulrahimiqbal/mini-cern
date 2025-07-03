@@ -88,8 +88,19 @@ const Dashboard: React.FC = () => {
     )
   }
 
-  const healthyComponents = overview.components.filter(c => c.status === 'healthy').length
-  const totalComponents = overview.components.length
+  // Defensive programming: ensure components array exists
+  const components = overview.components || []
+  const healthyComponents = components.filter(c => c.status === 'healthy').length
+  const totalComponents = components.length
+
+  // Defensive programming: ensure metrics exist
+  const metrics = overview.metrics || {
+    cpu_percent: 0,
+    memory_percent: 0,
+    disk_percent: 0,
+    active_agents: 0,
+    response_time_ms: 0
+  }
 
   return (
     <Box>
@@ -104,39 +115,39 @@ const Dashboard: React.FC = () => {
       <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6} mb={6}>
         <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200">
           <Text fontSize="sm" color="gray.500" mb={2}>CPU Usage</Text>
-          <Text fontSize="2xl" fontWeight="bold">{overview.metrics.cpu_percent.toFixed(1)}%</Text>
+          <Text fontSize="2xl" fontWeight="bold">{metrics.cpu_percent.toFixed(1)}%</Text>
           <Box mt={2} bg="gray.200" borderRadius="md" h={2}>
             <Box 
-              bg={overview.metrics.cpu_percent > 80 ? 'red.500' : 'green.500'}
+              bg={metrics.cpu_percent > 80 ? 'red.500' : 'green.500'}
               h="100%" 
               borderRadius="md"
-              width={`${overview.metrics.cpu_percent}%`}
+              width={`${metrics.cpu_percent}%`}
             />
           </Box>
         </Box>
 
         <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200">
           <Text fontSize="sm" color="gray.500" mb={2}>Memory Usage</Text>
-          <Text fontSize="2xl" fontWeight="bold">{overview.metrics.memory_percent.toFixed(1)}%</Text>
+          <Text fontSize="2xl" fontWeight="bold">{metrics.memory_percent.toFixed(1)}%</Text>
           <Box mt={2} bg="gray.200" borderRadius="md" h={2}>
             <Box 
-              bg={overview.metrics.memory_percent > 90 ? 'red.500' : 'blue.500'}
+              bg={metrics.memory_percent > 90 ? 'red.500' : 'blue.500'}
               h="100%" 
               borderRadius="md"
-              width={`${overview.metrics.memory_percent}%`}
+              width={`${metrics.memory_percent}%`}
             />
           </Box>
         </Box>
 
         <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200">
           <Text fontSize="sm" color="gray.500" mb={2}>Active Agents</Text>
-          <Text fontSize="2xl" fontWeight="bold">{overview.metrics.active_agents}</Text>
+          <Text fontSize="2xl" fontWeight="bold">{metrics.active_agents}</Text>
           <Text fontSize="sm" color="green.500" mt={1}>All agents operational</Text>
         </Box>
 
         <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200">
           <Text fontSize="sm" color="gray.500" mb={2}>Response Time</Text>
-          <Text fontSize="2xl" fontWeight="bold">{overview.metrics.response_time_ms}ms</Text>
+          <Text fontSize="2xl" fontWeight="bold">{metrics.response_time_ms}ms</Text>
           <Text fontSize="sm" color="gray.500" mt={1}>Average response</Text>
         </Box>
       </Grid>
@@ -184,7 +195,7 @@ const Dashboard: React.FC = () => {
       <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200">
         <Heading size="md" mb={4}>Component Status</Heading>
         <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={4}>
-          {overview.components.map((component: ComponentStatus) => (
+          {components.map((component: ComponentStatus) => (
             <Box
               key={component.name}
               p={4}
