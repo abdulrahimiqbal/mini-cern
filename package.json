@@ -1,0 +1,32 @@
+{
+  "name": "mini-cern",
+  "version": "1.0.0",
+  "description": "AI-Driven Physics Research System - Mini CERN Dashboard",
+  "main": "dashboard_server.py",
+  "scripts": {
+    "dev": "cd dashboard/frontend && npm run dev",
+    "build": "cd dashboard/frontend && npm run build",
+    "preview": "cd dashboard/frontend && npm run preview",
+    "install-frontend": "cd dashboard/frontend && npm install",
+    "start-backend": "python3 dashboard_server.py",
+    "start": "npm run start-backend"
+  },
+  "keywords": [
+    "ai",
+    "physics",
+    "research",
+    "dashboard",
+    "cern",
+    "science"
+  ],
+  "author": "Science Research Institute",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/mini-cern.git"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+} 
