@@ -1,11 +1,6 @@
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { Box } from '@chakra-ui/react'
-import Layout from './components/Layout'
-import Dashboard from './pages/Dashboard'
-import Testing from './pages/Testing'
-import Workflows from './pages/Workflows'
-import Monitoring from './pages/Monitoring'
+import { Box, Text } from '@chakra-ui/react'
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
@@ -42,20 +37,37 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+// Simple test components
+const Dashboard = () => (
+  <Box p={8}>
+    <Text fontSize="2xl" fontWeight="bold" color="blue.600">
+      Dashboard Working!
+    </Text>
+    <Text>Mini CERN Science Research Institute</Text>
+  </Box>
+)
+
+const Testing = () => (
+  <Box p={8}>
+    <Text fontSize="2xl" fontWeight="bold" color="green.600">
+      Testing Page Working!
+    </Text>
+  </Box>
+)
+
 function App() {
   console.log('App component rendering')
   
   return (
     <ErrorBoundary>
       <Box minHeight="100vh" bg="gray.50">
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/testing" element={<Testing />} />
-            <Route path="/workflows" element={<Workflows />} />
-            <Route path="/monitoring" element={<Monitoring />} />
-          </Routes>
-        </Layout>
+        <Box p={4} bg="blue.600" color="white">
+          <Text fontSize="xl" fontWeight="bold">Mini CERN Dashboard</Text>
+        </Box>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/testing" element={<Testing />} />
+        </Routes>
       </Box>
     </ErrorBoundary>
   )

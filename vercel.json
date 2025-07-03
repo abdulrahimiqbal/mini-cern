@@ -1,19 +1,19 @@
 {
-  "buildCommand": "cd dashboard/frontend && npm install && npm run build",
+  "buildCommand": "cd dashboard/frontend && npm run build",
   "outputDirectory": "dashboard/frontend/dist",
   "installCommand": "cd dashboard/frontend && npm install",
   "rewrites": [
     {
-      "source": "/api/health",
-      "destination": "/api/health"
-    },
-    {
-      "source": "/api/dashboard/overview",
-      "destination": "/api/dashboard"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/health.js": {
+      "memory": 128
+    },
+    "api/dashboard.js": {
+      "memory": 128
+    }
+  }
 } 
