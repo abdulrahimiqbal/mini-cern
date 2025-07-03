@@ -124,11 +124,11 @@ const Workflows: React.FC = () => {
       <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200" mb={6}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
           <Heading size="md">Active Workflows</Heading>
-                     <Button
-             colorScheme="blue"
-             onClick={startNewWorkflow}
-             loading={creating}
-           >
+                               <Button
+            colorScheme="blue"
+            onClick={startNewWorkflow}
+            isLoading={creating}
+          >
             Start New Research Workflow
           </Button>
         </Box>
@@ -158,7 +158,7 @@ const Workflows: React.FC = () => {
           <Text color="gray.400" mb={6}>
             Create your first research workflow to get started
           </Text>
-                     <Button colorScheme="blue" onClick={startNewWorkflow} loading={creating}>
+                     <Button colorScheme="blue" onClick={startNewWorkflow} isLoading={creating}>
             Start First Workflow
           </Button>
         </Box>
