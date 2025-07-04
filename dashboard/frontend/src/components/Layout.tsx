@@ -17,6 +17,7 @@ const navItems = [
   { label: 'Dashboard', path: '/' },
   { label: 'Testing', path: '/testing' },
   { label: 'Workflows', path: '/workflows' },
+  { label: 'Research', path: '/research' },
   { label: 'Monitoring', path: '/monitoring' },
 ]
 

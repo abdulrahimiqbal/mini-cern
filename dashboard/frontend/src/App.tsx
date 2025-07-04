@@ -55,6 +55,11 @@ const LazyWorkflows = React.lazy(() => import('./pages/Workflows').catch(err => 
   return { default: () => <Text color="red.500">Failed to load Workflows</Text> }
 }))
 
+const LazyResearch = React.lazy(() => import('./pages/Research').catch(err => {
+  console.error('Failed to load Research:', err)
+  return { default: () => <Text color="red.500">Failed to load Research</Text> }
+}))
+
 const LazyMonitoring = React.lazy(() => import('./pages/Monitoring').catch(err => {
   console.error('Failed to load Monitoring:', err)
   return { default: () => <Text color="red.500">Failed to load Monitoring</Text> }
@@ -100,6 +105,13 @@ function App() {
                   <Suspense fallback={<LoadingSpinner />}>
                     <ErrorBoundary fallback="Workflows failed to load">
                       <LazyWorkflows />
+                    </ErrorBoundary>
+                  </Suspense>
+                } />
+                <Route path="/research" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ErrorBoundary fallback="Research failed to load">
+                      <LazyResearch />
                     </ErrorBoundary>
                   </Suspense>
                 } />

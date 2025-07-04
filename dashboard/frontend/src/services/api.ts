@@ -71,6 +71,22 @@ export const apiService = {
     const response = await api.get('/api/dashboard/safety')
     return response.data
   },
+
+  // Research (Phase 6)
+  async getResearchProjects(): Promise<any> {
+    const response = await api.get('/api/research/projects')
+    return response.data
+  },
+
+  async createResearchProject(projectData: any): Promise<ApiResponse> {
+    const response = await api.post('/api/research/create-project', projectData)
+    return response.data
+  },
+
+  async startResearchProject(projectId: string): Promise<ApiResponse> {
+    const response = await api.post('/api/research/start-project', { project_id: projectId })
+    return response.data
+  },
 }
 
 export default apiService 
