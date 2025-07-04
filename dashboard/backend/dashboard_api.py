@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 
 # Import Phase 4 components
 from core.orchestrator import ResearchOrchestrator
-from core.research_project import ResearchProject
+from core.research_project import ResearchProject, Priority
 from workflow.workflow_engine import WorkflowEngine
 from workflow.task_scheduler import TaskScheduler
 from safety.oversight_monitor import SafetyMonitor
@@ -106,8 +106,12 @@ async def initialize_dashboard_components():
         quality_system = PeerReviewSystem()
         e2e_testing = E2ETestRunner()
         
-        # For now, create a simplified orchestrator without workflow engine
-        orchestrator = None  # Will implement proper orchestrator later
+        # Initialize the real orchestrator
+        orchestrator = ResearchOrchestrator(
+            redis_url="redis://localhost:6379",
+            max_concurrent_projects=3
+        )
+        await orchestrator.initialize()
         
         # Update component statuses
         component_statuses.update({
@@ -117,13 +121,16 @@ async def initialize_dashboard_components():
             "agent_registry": {"status": "healthy", "last_heartbeat": datetime.now()},
             "message_bus": {"status": "healthy", "last_heartbeat": datetime.now()},
             "e2e_testing": {"status": "healthy", "last_heartbeat": datetime.now()},
+            "orchestrator": {"status": "healthy", "last_heartbeat": datetime.now()},
         })
         
         logger.info("Dashboard components initialized successfully")
         
     except Exception as e:
         logger.error(f"Failed to initialize dashboard components: {e}")
-        raise
+        # Fall back to mock mode if Redis is not available
+        logger.warning("Falling back to mock mode for orchestrator")
+        orchestrator = None
 
 
 async def cleanup_dashboard_components():
@@ -240,22 +247,47 @@ async def get_active_workflows():
     """Get active workflows"""
     try:
         workflows = []
-        for cycle_id, workflow_data in active_workflows.items():
-            workflows.append({
-                "cycle_id": cycle_id,
-                "project_name": workflow_data.get("project_name", "Unknown"),
-                "status": workflow_data.get("status", "unknown"),
-                "start_time": workflow_data.get("start_time"),
-                "progress_percentage": workflow_data.get("progress", 0.0),
-                "current_step": workflow_data.get("current_step", ""),
-                "estimated_completion": workflow_data.get("estimated_completion")
-            })
         
-        return ApiResponse(
-            success=True,
-            message="Active workflows retrieved",
-            data={"workflows": workflows, "total": len(workflows)}
-        )
+        if orchestrator:
+            # Get real workflows from orchestrator
+            active_projects = orchestrator.get_active_projects()
+            
+            for project in active_projects:
+                workflows.append({
+                    "id": project.id,
+                    "title": project.title,
+                    "status": project.state.value.lower(),
+                    "progress": project.progress,
+                    "current_step": project.state.value.lower().replace('_', ' '),
+                    "created_at": project.created_at.isoformat(),
+                    "updated_at": project.last_updated.isoformat(),
+                    "estimated_completion": (project.created_at + timedelta(hours=project.expected_duration_hours)).isoformat(),
+                    "assigned_agents": list(project.assigned_agents.keys()),
+                    "physics_domain": project.physics_domain,
+                    "research_question": project.research_question,
+                    "cost_used": project.cost_used_usd,
+                    "max_cost": project.max_cost_usd
+                })
+        else:
+            # Fallback to local tracking if orchestrator unavailable
+            for cycle_id, workflow_data in active_workflows.items():
+                workflows.append({
+                    "id": cycle_id,
+                    "title": workflow_data.get("project_name", "Unknown"),
+                    "status": workflow_data.get("status", "unknown"),
+                    "progress": workflow_data.get("progress", 0.0),
+                    "current_step": workflow_data.get("current_step", ""),
+                    "created_at": workflow_data.get("start_time", datetime.now()).isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                    "estimated_completion": workflow_data.get("estimated_completion", datetime.now()).isoformat(),
+                    "assigned_agents": [],
+                    "physics_domain": "general",
+                    "research_question": "Mock research question",
+                    "cost_used": 0.0,
+                    "max_cost": 100.0
+                })
+        
+        return workflows
         
     except Exception as e:
         logger.error(f"Error getting workflows: {e}")
@@ -267,72 +299,107 @@ async def start_workflow(request: WorkflowStartRequest, background_tasks: Backgr
     """Start a new research workflow"""
     try:
         if not orchestrator:
-            raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+            # Fallback to mock workflow if orchestrator unavailable
+            cycle_id = f"cycle_{int(datetime.now().timestamp())}"
+            active_workflows[cycle_id] = {
+                "project_name": request.project_name,
+                "status": "starting",
+                "start_time": datetime.now(),
+                "progress": 0.0,
+                "current_step": "initialization",
+                "estimated_completion": datetime.now() + timedelta(minutes=10)
+            }
+            
+            return {
+                "success": True,
+                "message": f"Mock workflow started successfully",
+                "data": {"cycle_id": cycle_id, "note": "Orchestrator unavailable - using mock mode"}
+            }
         
-        # Create research project
-        project = ResearchProject(
-            project_id=f"proj_{int(datetime.now().timestamp())}",
-            name=request.project_name,
-            research_topic=request.research_topic,
-            objectives=["Automated research cycle demonstration"],
-            methodology="LLM-driven autonomous research",
-            collaboration_protocol="distributed_consensus"
+        # Create research project using the real orchestrator
+        project = await orchestrator.create_project(
+            title=request.project_name,
+            research_question=request.research_topic,
+            physics_domain=request.parameters.get("physics_domain", "general"),
+            priority=getattr(Priority, request.parameters.get("priority", "MEDIUM").upper(), Priority.MEDIUM),
+            max_cost_usd=float(request.parameters.get("max_cost", 1000.0)),
+            expected_duration_hours=int(request.parameters.get("duration_hours", 24))
         )
         
-        # Start workflow in background
-        cycle_id = f"cycle_{int(datetime.now().timestamp())}"
-        background_tasks.add_task(
-            execute_workflow_background,
-            cycle_id,
-            project,
-            request.workflow_template,
-            request.parameters
-        )
+        # Broadcast workflow started event
+        if websocket_manager:
+            await websocket_manager.broadcast({
+                "type": "workflow_started",
+                "data": {
+                    "project_id": project.id,
+                    "title": project.title,
+                    "status": project.state.value.lower()
+                },
+                "timestamp": datetime.now().isoformat()
+            })
         
-        # Track workflow
-        active_workflows[cycle_id] = {
-            "project_name": request.project_name,
-            "status": "starting",
-            "start_time": datetime.now(),
-            "progress": 0.0,
-            "current_step": "initialization",
-            "estimated_completion": datetime.now() + timedelta(minutes=10)
+        return {
+            "success": True,
+            "message": f"Research project started successfully",
+            "data": {
+                "project_id": project.id,
+                "title": project.title,
+                "status": project.state.value.lower(),
+                "assigned_agents": list(project.assigned_agents.keys())
+            }
         }
-        
-        return ApiResponse(
-            success=True,
-            message=f"Workflow started successfully",
-            data={"cycle_id": cycle_id, "project_id": project.project_id}
-        )
         
     except Exception as e:
         logger.error(f"Error starting workflow: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/dashboard/workflows/{cycle_id}/stop")
-async def stop_workflow(cycle_id: str):
+@app.post("/api/dashboard/workflows/{project_id}/stop")
+async def stop_workflow(project_id: str):
     """Stop a running workflow"""
     try:
-        if cycle_id not in active_workflows:
-            raise HTTPException(status_code=404, detail="Workflow not found")
-        
-        # Update workflow status
-        active_workflows[cycle_id]["status"] = "stopped"
-        active_workflows[cycle_id]["completion_time"] = datetime.now()
-        
-        # Broadcast workflow stopped event
-        if websocket_manager:
-            await websocket_manager.broadcast({
-                "type": "workflow_stopped",
-                "data": {"cycle_id": cycle_id},
-                "timestamp": datetime.now().isoformat()
-            })
-        
-        return ApiResponse(
-            success=True,
-            message=f"Workflow {cycle_id} stopped successfully"
-        )
+        if orchestrator:
+            # Try to stop the real project
+            project = orchestrator.get_project(project_id)
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+            
+            # Fail the project to stop it
+            await orchestrator.fail_project(project_id, "Manually stopped from dashboard")
+            
+            # Broadcast workflow stopped event
+            if websocket_manager:
+                await websocket_manager.broadcast({
+                    "type": "workflow_stopped",
+                    "data": {"project_id": project_id, "title": project.title},
+                    "timestamp": datetime.now().isoformat()
+                })
+            
+            return {
+                "success": True,
+                "message": f"Project {project.title} stopped successfully"
+            }
+        else:
+            # Fallback to local tracking
+            if project_id not in active_workflows:
+                raise HTTPException(status_code=404, detail="Workflow not found")
+            
+            # Update workflow status
+            active_workflows[project_id]["status"] = "stopped"
+            active_workflows[project_id]["completion_time"] = datetime.now()
+            
+            # Broadcast workflow stopped event
+            if websocket_manager:
+                await websocket_manager.broadcast({
+                    "type": "workflow_stopped",
+                    "data": {"cycle_id": project_id},
+                    "timestamp": datetime.now().isoformat()
+                })
+            
+            return {
+                "success": True,
+                "message": f"Mock workflow {project_id} stopped successfully"
+            }
         
     except Exception as e:
         logger.error(f"Error stopping workflow: {e}")

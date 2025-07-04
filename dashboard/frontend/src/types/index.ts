@@ -40,12 +40,18 @@ export interface TestResult {
 
 export interface WorkflowStatus {
   id: string
-  name: string
-  status: 'running' | 'paused' | 'completed' | 'failed'
+  title: string
+  status: string
   progress: number
   current_step: string
   created_at: string
   updated_at: string
+  estimated_completion: string
+  assigned_agents: string[]
+  physics_domain: string
+  research_question: string
+  cost_used: number
+  max_cost: number
 }
 
 export interface WebSocketEvent {
