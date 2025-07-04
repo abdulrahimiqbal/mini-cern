@@ -6,8 +6,15 @@ class WebSocketService {
   private listeners: Map<string, Function[]> = new Map()
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
+  private isProduction = process.env.NODE_ENV === 'production'
 
   connect(): void {
+    // Disable WebSocket in production for Vercel deployment
+    if (this.isProduction) {
+      console.log('WebSocket disabled in production environment')
+      return
+    }
+
     if (this.socket) return
 
     this.socket = io('http://localhost:8000', {
@@ -42,6 +49,8 @@ class WebSocketService {
   }
 
   private handleReconnect(): void {
+    if (this.isProduction) return // Don't reconnect in production
+    
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++
       setTimeout(() => {
@@ -83,10 +92,13 @@ class WebSocketService {
   }
 
   isConnected(): boolean {
+    // In production, return false since WebSocket is disabled
+    if (this.isProduction) return false
     return this.socket?.connected || false
   }
 
   emit(eventType: string, data: any): void {
+    if (this.isProduction) return // Don't emit in production
     if (this.socket?.connected) {
       this.socket.emit(eventType, data)
     }
