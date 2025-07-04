@@ -6,10 +6,21 @@ import {
   Text,
   Badge,
   Spinner,
+  Button,
+  VStack,
+  Card,
+  CardBody,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  Progress,
+  CardHeader,
+  HStack,
 } from '@chakra-ui/react'
 import apiService from '../services/api'
 import websocketService from '../services/websocket'
-import type { SystemOverview, ComponentStatus, WebSocketEvent } from '../types'
+import type { SystemOverview, WebSocketEvent } from '../types'
 
 const Monitoring: React.FC = () => {
   const [overview, setOverview] = useState<SystemOverview | null>(null)
@@ -28,8 +39,8 @@ const Monitoring: React.FC = () => {
       ])
       
       setOverview(overviewData)
-      setAgentStatus(agentsData)
-      setSafetyStatus(safetyData)
+      setAgentStatus(agentsData?.data || agentsData)
+      setSafetyStatus(safetyData?.data || safetyData)
       setError(null)
     } catch (error) {
       setError('Failed to load monitoring data')
@@ -51,45 +62,17 @@ const Monitoring: React.FC = () => {
     websocketService.subscribe('system_metrics', handleSystemUpdate)
     websocketService.subscribe('component_status', handleSystemUpdate)
 
+    // Auto-refresh every 10 seconds
     const interval = setInterval(loadMonitoringData, 10000)
 
     return () => {
-      clearInterval(interval)
       websocketService.unsubscribe('system_metrics', handleSystemUpdate)
       websocketService.unsubscribe('component_status', handleSystemUpdate)
+      clearInterval(interval)
     }
   }, [])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy': return 'green'
-      case 'warning': return 'yellow'
-      case 'error': return 'red'
-      case 'offline': return 'gray'
-      default: return 'gray'
-    }
-  }
 
-  const loadSystemData = async () => {
-    try {
-      setLoading(true)
-      const data = await apiService.getSystemOverview()
-      setOverview(data)
-      setError(null)
-    } catch (err) {
-      setError('Failed to load monitoring data')
-      console.error('Error loading monitoring data:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadSystemData()
-    const interval = setInterval(loadSystemData, 5000) // Update every 5 seconds
-
-    return () => clearInterval(interval)
-  }, [])
 
   if (loading && !overview) {
     return (
@@ -103,8 +86,9 @@ const Monitoring: React.FC = () => {
   if (error) {
     return (
       <Box bg="red.50" border="1px" borderColor="red.200" borderRadius="md" p={4}>
-        <Text color="red.800" fontWeight="bold">Error!</Text>
+        <Text color="red.800" fontWeight="bold">Monitoring Error</Text>
         <Text color="red.600">{error}</Text>
+        <Button mt={2} size="sm" onClick={loadMonitoringData}>Retry</Button>
       </Box>
     )
   }
@@ -127,180 +111,239 @@ const Monitoring: React.FC = () => {
     response_time_ms: 0
   }
 
-  // Defensive programming: ensure components exist
-  const components = overview.components || []
+
 
   return (
-    <Box>
-      <Box mb={6}>
-        <Heading size="lg" mb={2}>System Monitoring</Heading>
-        <Text color="gray.600">
-          Detailed monitoring of all system components and performance metrics
-        </Text>
-      </Box>
-
-      {/* Real-time Metrics */}
-      {overview && (
-        <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200" mb={6}>
-          <Heading size="md" mb={4}>Real-time Performance</Heading>
-          <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={4}>
-            <Box textAlign="center" p={4} bg="gray.50" borderRadius="md">
-              <Text fontSize="xs" color="gray.500" mb={1}>CPU USAGE</Text>
-              <Text fontSize="2xl" fontWeight="bold" color={metrics.cpu_percent > 80 ? 'red.500' : 'green.500'}>
-                {metrics.cpu_percent.toFixed(1)}%
-              </Text>
-              <Box mt={2} bg="gray.200" borderRadius="md" h={1}>
-                <Box 
-                  bg={metrics.cpu_percent > 80 ? 'red.500' : 'green.500'}
-                  h="100%" 
-                  borderRadius="md"
-                  width={`${metrics.cpu_percent}%`}
-                />
-              </Box>
-            </Box>
-
-            <Box textAlign="center" p={4} bg="gray.50" borderRadius="md">
-              <Text fontSize="xs" color="gray.500" mb={1}>MEMORY USAGE</Text>
-              <Text fontSize="2xl" fontWeight="bold" color={metrics.memory_percent > 90 ? 'red.500' : 'blue.500'}>
-                {metrics.memory_percent.toFixed(1)}%
-              </Text>
-              <Box mt={2} bg="gray.200" borderRadius="md" h={1}>
-                <Box 
-                  bg={metrics.memory_percent > 90 ? 'red.500' : 'blue.500'}
-                  h="100%" 
-                  borderRadius="md"
-                  width={`${metrics.memory_percent}%`}
-                />
-              </Box>
-            </Box>
-
-            <Box textAlign="center" p={4} bg="gray.50" borderRadius="md">
-              <Text fontSize="xs" color="gray.500" mb={1}>RESPONSE TIME</Text>
-              <Text fontSize="2xl" fontWeight="bold" color="purple.500">
-                {metrics.response_time_ms}ms
-              </Text>
-              <Text fontSize="xs" color="gray.500" mt={1}>
-                {metrics.response_time_ms < 100 ? 'Excellent' : 'Good'}
-              </Text>
-            </Box>
-
-            <Box textAlign="center" p={4} bg="gray.50" borderRadius="md">
-              <Text fontSize="xs" color="gray.500" mb={1}>ACTIVE AGENTS</Text>
-              <Text fontSize="2xl" fontWeight="bold" color="green.500">
-                {metrics.active_agents}
-              </Text>
-              <Text fontSize="xs" color="gray.500" mt={1}>
-                All operational
-              </Text>
-            </Box>
-          </Grid>
+    <Box p={6}>
+      <VStack spacing={6} align="stretch">
+        {/* Header */}
+        <Box>
+          <Heading size="lg">System Monitoring</Heading>
+          <Text color="gray.600">Real-time system performance and agent collaboration tracking</Text>
         </Box>
-      )}
 
-      {/* Component Health Details */}
-      {overview && (
-        <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200" mb={6}>
-          <Heading size="md" mb={4}>Component Health Status</Heading>
-          <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4}>
-            {components.map((component: ComponentStatus) => (
-              <Box
-                key={component.name}
-                p={4}
-                bg="gray.50"
-                borderRadius="md"
-                borderLeft="4px"
-                borderColor={`${getStatusColor(component.status)}.500`}
-              >
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Text fontWeight="medium" textTransform="capitalize">
-                    {component.name.replace('_', ' ')}
-                  </Text>
-                  <Badge colorScheme={getStatusColor(component.status)}>
-                    {component.status}
-                  </Badge>
+        {/* System Overview */}
+        <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={6}>
+          <Card>
+            <CardBody>
+              <Stat>
+                <StatLabel>CPU Usage</StatLabel>
+                <StatNumber>{metrics.cpu_percent.toFixed(1)}%</StatNumber>
+                <StatHelpText>
+                  <Progress value={metrics.cpu_percent} colorScheme={metrics.cpu_percent > 80 ? 'red' : 'green'} size="sm" />
+                </StatHelpText>
+              </Stat>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardBody>
+              <Stat>
+                <StatLabel>Memory Usage</StatLabel>
+                <StatNumber>{metrics.memory_percent.toFixed(1)}%</StatNumber>
+                <StatHelpText>
+                  <Progress value={metrics.memory_percent} colorScheme={metrics.memory_percent > 85 ? 'red' : 'green'} size="sm" />
+                </StatHelpText>
+              </Stat>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardBody>
+              <Stat>
+                <StatLabel>Active Agents</StatLabel>
+                <StatNumber>{agentStatus?.total_agents || 0}</StatNumber>
+                <StatHelpText>{agentStatus?.busy_agents || 0} busy • {agentStatus?.idle_agents || 0} idle</StatHelpText>
+              </Stat>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardBody>
+              <Stat>
+                <StatLabel>Response Time</StatLabel>
+                <StatNumber>{metrics.response_time_ms}ms</StatNumber>
+                <StatHelpText>Average API response</StatHelpText>
+              </Stat>
+            </CardBody>
+          </Card>
+        </Grid>
+
+        {/* Agent Collaboration Section */}
+        {agentStatus && (
+          <Card>
+            <CardHeader>
+              <Heading size="md">Agent Collaboration Network</Heading>
+              <Text fontSize="sm" color="gray.600">Real-time agent assignments and collaboration patterns</Text>
+            </CardHeader>
+            <CardBody>
+              <Grid templateColumns="repeat(auto-fit, minmax(300px, 1fr))" gap={6}>
+                {/* Collaboration Stats */}
+                <Box>
+                  <Text fontSize="lg" fontWeight="bold" mb={4}>Collaboration Metrics</Text>
+                  <VStack spacing={3} align="stretch">
+                    <HStack justify="space-between">
+                      <Text fontSize="sm">Active Collaborations</Text>
+                      <Badge colorScheme="blue">{agentStatus.collaboration_stats?.active_collaborations || 0}</Badge>
+                    </HStack>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm">Total Assignments</Text>
+                      <Badge colorScheme="green">{agentStatus.collaboration_stats?.total_project_assignments || 0}</Badge>
+                    </HStack>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm">Avg Team Size</Text>
+                      <Badge colorScheme="purple">{(agentStatus.collaboration_stats?.avg_team_size || 0).toFixed(1)}</Badge>
+                    </HStack>
+                  </VStack>
                 </Box>
-                
-                <Box mb={2}>
-                  <Text fontSize="sm" color="gray.600">
-                    Performance: {component.performance}%
-                  </Text>
-                  <Box bg="gray.200" borderRadius="md" h={1} mt={1}>
-                    <Box 
-                      bg={`${getStatusColor(component.status)}.500`}
-                      h="100%" 
-                      borderRadius="md"
-                      width={`${component.performance}%`}
+
+                {/* Agent Details */}
+                <Box>
+                  <Text fontSize="lg" fontWeight="bold" mb={4}>Agent Status</Text>
+                  <VStack spacing={3} align="stretch">
+                    {agentStatus.agents_detail?.slice(0, 4).map((agent: any) => (
+                      <Box key={agent.id} p={3} bg="gray.50" borderRadius="md">
+                        <HStack justify="space-between">
+                          <VStack align="start" spacing={1}>
+                            <Text fontSize="sm" fontWeight="bold">{agent.name}</Text>
+                            <Text fontSize="xs" color="gray.600">{agent.specialization}</Text>
+                          </VStack>
+                          <VStack align="end" spacing={1}>
+                            <Badge 
+                              colorScheme={agent.status === 'busy' ? 'red' : 'green'}
+                              size="sm"
+                            >
+                              {agent.status.toUpperCase()}
+                            </Badge>
+                            <Text fontSize="xs" color="gray.500">
+                              {agent.performance_score}% performance
+                            </Text>
+                          </VStack>
+                        </HStack>
+                        {agent.current_project && (
+                          <Box mt={2} p={2} bg="blue.50" borderRadius="sm">
+                            <Text fontSize="xs" color="blue.800">
+                              Working on: {agent.current_project.title}
+                            </Text>
+                            <Progress 
+                              value={agent.current_project.progress} 
+                              size="xs" 
+                              colorScheme="blue" 
+                              mt={1}
+                            />
+                          </Box>
+                        )}
+                      </Box>
+                    ))}
+                  </VStack>
+                </Box>
+              </Grid>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Safety Monitoring */}
+        {safetyStatus && (
+          <Card>
+            <CardHeader>
+              <Heading size="md">Safety Monitoring</Heading>
+              <Text fontSize="sm" color="gray.600">Continuous safety oversight and violation tracking</Text>
+            </CardHeader>
+            <CardBody>
+              <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={6}>
+                <VStack spacing={3} align="stretch">
+                  <HStack>
+                    <Text fontSize="sm" fontWeight="bold">Overall Status:</Text>
+                    <Badge 
+                      colorScheme={safetyStatus.overall_status === 'safe' ? 'green' : 'red'}
+                    >
+                      {safetyStatus.overall_status?.toUpperCase()}
+                    </Badge>
+                  </HStack>
+                  <HStack>
+                    <Text fontSize="sm">Monitoring Active:</Text>
+                    <Badge colorScheme={safetyStatus.monitoring_active ? 'green' : 'gray'}>
+                      {safetyStatus.monitoring_active ? 'YES' : 'NO'}
+                    </Badge>
+                  </HStack>
+                </VStack>
+
+                <VStack spacing={3} align="stretch">
+                  <HStack>
+                    <Text fontSize="sm">Active Violations:</Text>
+                    <Badge colorScheme="red">{safetyStatus.active_violations?.length || 0}</Badge>
+                  </HStack>
+                  <HStack>
+                    <Text fontSize="sm">24h Violations:</Text>
+                    <Badge colorScheme="yellow">{safetyStatus.violation_count_24h || 0}</Badge>
+                  </HStack>
+                </VStack>
+
+                <VStack spacing={3} align="stretch">
+                  <HStack>
+                    <Text fontSize="sm">Emergency Stops:</Text>
+                    <Badge colorScheme="red">{safetyStatus.emergency_stops_count || 0}</Badge>
+                  </HStack>
+                  <HStack>
+                    <Text fontSize="sm">Last Check:</Text>
+                    <Text fontSize="xs" color="gray.600">
+                      {safetyStatus.last_check ? new Date(safetyStatus.last_check).toLocaleTimeString() : 'N/A'}
+                    </Text>
+                  </HStack>
+                </VStack>
+              </Grid>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Component Health Grid */}
+        {overview?.components && (
+          <Card>
+            <CardHeader>
+              <Heading size="md">System Components</Heading>
+              <Text fontSize="sm" color="gray.600">Health status of all system components</Text>
+            </CardHeader>
+            <CardBody>
+              <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
+                {overview.components.map((component: any) => (
+                  <Box key={component.name} p={3} bg="gray.50" borderRadius="md">
+                    <HStack justify="space-between" mb={2}>
+                      <Text fontSize="sm" fontWeight="bold">
+                        {component.name.replace('_', ' ').toUpperCase()}
+                      </Text>
+                      <Badge 
+                        colorScheme={
+                          component.status === 'healthy' ? 'green' :
+                          component.status === 'warning' ? 'yellow' : 'red'
+                        }
+                        size="sm"
+                      >
+                        {component.status.toUpperCase()}
+                      </Badge>
+                    </HStack>
+                    <Progress 
+                      value={component.performance} 
+                      size="sm" 
+                      colorScheme={
+                        component.performance > 90 ? 'green' :
+                        component.performance > 70 ? 'yellow' : 'red'
+                      }
                     />
+                    <Text fontSize="xs" color="gray.500" mt={1}>
+                      {component.performance}% performance
+                    </Text>
+                    {component.details && (
+                      <Text fontSize="xs" color="gray.600" mt={1}>
+                        {component.details}
+                      </Text>
+                    )}
                   </Box>
-                </Box>
-
-                <Text fontSize="xs" color="gray.500">
-                  Last Check: {new Date(component.last_check).toLocaleTimeString()}
-                </Text>
-                
-                {component.details && (
-                  <Text fontSize="xs" color="gray.600" mt={1}>
-                    {component.details}
-                  </Text>
-                )}
-              </Box>
-            ))}
-          </Grid>
-        </Box>
-      )}
-
-      {/* Agent Status */}
-      <Grid templateColumns={{ base: '1fr', lg: 'repeat(2, 1fr)' }} gap={6}>
-        <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200">
-          <Heading size="md" mb={4}>Agent Registry Status</Heading>
-          {agentStatus ? (
-            <Box>
-              <Text fontSize="sm" color="gray.600" mb={2}>
-                Status: {agentStatus.success ? 'Operational' : 'Error'}
-              </Text>
-              {agentStatus.data && (
-                <Box>
-                  <Text fontSize="sm">
-                    Message: {agentStatus.data.message || agentStatus.message}
-                  </Text>
-                  {agentStatus.data.active_agents && (
-                    <Text fontSize="sm" color="green.600">
-                      Active Agents: {agentStatus.data.active_agents}
-                    </Text>
-                  )}
-                </Box>
-              )}
-            </Box>
-          ) : (
-            <Text color="gray.500">Loading agent status...</Text>
-          )}
-        </Box>
-
-        <Box bg="white" p={5} borderRadius="md" shadow="sm" border="1px" borderColor="gray.200">
-          <Heading size="md" mb={4}>Safety Monitor Status</Heading>
-          {safetyStatus ? (
-            <Box>
-              <Text fontSize="sm" color="gray.600" mb={2}>
-                Status: {safetyStatus.success ? 'Operational' : 'Error'}
-              </Text>
-              {safetyStatus.data && (
-                <Box>
-                  <Text fontSize="sm">
-                    Message: {safetyStatus.data.message || safetyStatus.message}
-                  </Text>
-                  {safetyStatus.data.violations && (
-                    <Text fontSize="sm" color={safetyStatus.data.violations > 0 ? 'red.600' : 'green.600'}>
-                      Violations: {safetyStatus.data.violations}
-                    </Text>
-                  )}
-                </Box>
-              )}
-            </Box>
-          ) : (
-            <Text color="gray.500">Loading safety status...</Text>
-          )}
-        </Box>
-      </Grid>
+                ))}
+              </Grid>
+            </CardBody>
+          </Card>
+        )}
+      </VStack>
     </Box>
   )
 }

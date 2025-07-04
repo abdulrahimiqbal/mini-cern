@@ -438,32 +438,108 @@ async def run_test_suite(request: TestExecutionRequest, background_tasks: Backgr
 async def get_agents_status():
     """Get agent registry status"""
     try:
-        # Mock agent data for now
-        agents_data = {
-            "total_agents": 6,
-            "active_agents": 6,
-            "idle_agents": 4,
-            "busy_agents": 2,
-            "offline_agents": 0,
-            "agents_by_type": {
-                "RESEARCH_COORDINATOR": 1,
-                "DATA_ANALYST": 1,
-                "SIMULATION_SPECIALIST": 1,
-                "THEORY_SPECIALIST": 1,
-                "EXPERIMENTAL_DESIGNER": 1,
-                "REVIEWER": 1
+        if orchestrator:
+            # Get real agent data from orchestrator
+            agent_assignments = orchestrator.agent_assignments
+            available_agents = orchestrator.available_agents
+            active_projects = orchestrator.get_active_projects()
+            
+            # Calculate agent utilization
+            busy_agents = len(agent_assignments)
+            idle_agents = len(available_agents) - busy_agents
+            
+            # Get agent details with their current assignments
+            agents_detail = []
+            for agent_id in available_agents:
+                project_id = agent_assignments.get(agent_id)
+                current_project = None
+                if project_id:
+                    current_project = next((p for p in active_projects if p.id == project_id), None)
+                
+                agents_detail.append({
+                    "id": agent_id,
+                    "name": agent_id.replace('_', ' ').title(),
+                    "status": "busy" if project_id else "idle",
+                    "current_project": {
+                        "id": current_project.id if current_project else None,
+                        "title": current_project.title if current_project else None,
+                        "progress": current_project.progress if current_project else 0
+                    } if current_project else None,
+                    "specialization": _get_agent_specialization(agent_id),
+                    "performance_score": 95.0 + (hash(agent_id) % 10),  # Mock performance
+                    "tasks_completed": 10 + (hash(agent_id) % 50)  # Mock task count
+                })
+            
+            agents_data = {
+                "total_agents": len(available_agents),
+                "active_agents": len(available_agents),
+                "idle_agents": idle_agents,
+                "busy_agents": busy_agents,
+                "offline_agents": 0,
+                "agents_detail": agents_detail,
+                "collaboration_stats": {
+                    "active_collaborations": len([p for p in active_projects if len(p.assigned_agents) > 1]),
+                    "total_project_assignments": len(agent_assignments),
+                    "avg_team_size": sum(len(p.assigned_agents) for p in active_projects) / max(len(active_projects), 1)
+                }
             }
-        }
+        else:
+            # Fallback mock data
+            agents_data = {
+                "total_agents": 6,
+                "active_agents": 6,
+                "idle_agents": 4,
+                "busy_agents": 2,
+                "offline_agents": 0,
+                "agents_detail": [
+                    {
+                        "id": "theory_agent",
+                        "name": "Theory Agent",
+                        "status": "busy",
+                        "current_project": {"id": "proj_001", "title": "Quantum Research", "progress": 65.5},
+                        "specialization": "Theoretical Physics",
+                        "performance_score": 98.5,
+                        "tasks_completed": 45
+                    },
+                    {
+                        "id": "experimental_agent", 
+                        "name": "Experimental Agent",
+                        "status": "idle",
+                        "current_project": None,
+                        "specialization": "Experimental Design",
+                        "performance_score": 96.2,
+                        "tasks_completed": 38
+                    }
+                ],
+                "collaboration_stats": {
+                    "active_collaborations": 1,
+                    "total_project_assignments": 2,
+                    "avg_team_size": 2.5
+                }
+            }
         
-        return ApiResponse(
-            success=True,
-            message="Agent status retrieved",
-            data=agents_data
-        )
+        return {
+            "success": True,
+            "message": "Agent status retrieved",
+            "data": agents_data
+        }
         
     except Exception as e:
         logger.error(f"Error getting agent status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _get_agent_specialization(agent_id: str) -> str:
+    """Get agent specialization based on ID"""
+    specializations = {
+        "theory_agent": "Theoretical Physics & Mathematical Modeling",
+        "experimental_agent": "Experimental Design & Data Collection",
+        "analysis_agent": "Data Analysis & Statistical Modeling",
+        "literature_agent": "Literature Review & Knowledge Synthesis",
+        "safety_agent": "Safety Monitoring & Risk Assessment",
+        "meta_agent": "Meta-Research & Coordination"
+    }
+    return specializations.get(agent_id, "General Research")
 
 
 @app.get("/api/dashboard/safety")
