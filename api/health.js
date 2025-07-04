@@ -75,25 +75,37 @@ export default function handler(req, res) {
   }
 
   if (url.includes('/api/dashboard/workflows')) {
-    // Mock workflows data
+    // Mock workflows data matching the frontend interface
     const workflowsData = [
       {
-        id: "wf_001",
-        name: "Particle Analysis Workflow",
-        status: "running",
-        progress: 75,
-        current_step: "Data Processing",
+        id: "wf_mock_001",
+        title: "Quantum Entanglement Simulation (Mock)",
+        status: "executing",
+        progress: 75.2,
+        current_step: "Running quantum state simulation",
         created_at: new Date(Date.now() - 3600000).toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        estimated_completion: new Date(Date.now() + 3600000).toISOString(),
+        assigned_agents: ["theory_agent", "analysis_agent"],
+        physics_domain: "quantum",
+        research_question: "How does decoherence affect multi-particle entanglement?",
+        cost_used: 157.45,
+        max_cost: 500.0
       },
       {
-        id: "wf_002", 
-        name: "Theory Validation Pipeline",
+        id: "wf_mock_002", 
+        title: "Particle Collision Analysis (Mock)",
         status: "completed",
         progress: 100,
-        current_step: "Results Published",
+        current_step: "Results published",
         created_at: new Date(Date.now() - 7200000).toISOString(),
-        updated_at: new Date(Date.now() - 300000).toISOString()
+        updated_at: new Date(Date.now() - 300000).toISOString(),
+        estimated_completion: new Date(Date.now() - 300000).toISOString(),
+        assigned_agents: ["experimental_agent", "analysis_agent"],
+        physics_domain: "particle_physics",
+        research_question: "What novel particles are produced in high-energy collisions?",
+        cost_used: 890.12,
+        max_cost: 1000.0
       }
     ];
     return res.status(200).json(workflowsData);
